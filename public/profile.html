@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Loading...</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Rubik', sans-serif;
+        }
+
+        body {
+            background-color: #0a0a0a;
+            color: #ffffff;
+            display: flex;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 60px;
+            height: 100vh;
+            overflow-y: auto;
+            background: transparent;
+            z-index: 10;
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #222;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+
+        main {
+            flex: 1;
+            padding: 20px;
+            max-width: 600px;
+            height: 100vh;
+            overflow-y: auto;
+            margin-left: auto;
+            margin-right: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            width: 100%;
+            padding: 20px 0;
+            text-align: center;
+            border-bottom: 1px solid #333;
+        }
+
+        #postForm {
+            display: flex;
+            align-items: center;
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        #messageInput {
+            flex: 1;
+            background: none;
+            border: none;
+            padding: 10px;
+            color: white;
+            font-size: 16px;
+            outline: none;
+        }
+
+        #imageInput {
+            display: none;
+        }
+
+        .fileLabel {
+            cursor: pointer;
+            padding: 5px 10px;
+            background: #333;
+            border-radius: 5px;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+
+        button {
+            background-color: #ff0000;
+            color: #ffffff;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #cc0000;
+        }
+
+        #posts {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 0 10px;
+        }
+
+        .post {
+            padding: 15px;
+            background-color: #1a1a1a;
+            border-left: 4px solid #ff0000;
+            opacity: 0;
+            animation: fadeIn 0.3s ease-in-out forwards;
+            position: relative;
+            margin: 5px 0;
+            word-wrap: break-word;
+        }
+
+        .post p {
+            margin: 5px 0;
+        }
+
+        .post img, .post video {
+            max-width: 100%;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .delete-btn:hover {
+            background: red;
+        }
+
+        .post:hover .delete-btn {
+            opacity: 1;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar"></div>
+
+    <main>
+        <header>
+            <h1 id="username">Loading...</h1>
+        </header>
+
+        <form id="postForm" enctype="multipart/form-data" style="display: flex; align-items: center; gap: 10px;">
+            <label for="imageInput" class="fileLabel" style="cursor: pointer;">📎</label>
+            <input type="file" name="image" id="imageInput" style="display: none;">
+            <textarea name="message" id="messageInput" placeholder="Your message..." rows="1" style="flex: 1; padding: 8px 10px; color: white; background: #1a1a1a; border: 1px solid #333; border-radius: 5px; resize: none; font-size: 14px;"></textarea>
+            
+            <button type="submit" style="padding: 8px 12px; background-color: #ff0000; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">➤</button>
+        </form>
+        
+
+        <div id="posts"></div>
+    </main>
+
+    <script>
+        const username = window.location.pathname.substring(1);
+        document.getElementById("username").innerText = username;
+        document.title = username;
+
+        let loggedInUser = null;
+
+        async function checkLogin() {
+            try {
+                const res = await fetch("/check-auth");
+                const data = await res.json();
+                if (data.loggedIn && data.username === username) {
+                    loggedInUser = data.username;
+                } else {
+                    loggedInUser = null;
+                    document.getElementById("postForm").style.display = "none";
+                }
+            } catch (error) {
+                console.error("Error checking auth:", error);
+            }
+        }
+
+        function timeAgo(date) {
+            const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+            const intervals = {
+                year: 31536000,
+                month: 2592000,
+                week: 604800,
+                day: 86400,
+                hour: 3600,
+                minute: 60,
+                second: 1
+            };
+
+            for (const [unit, secondsInUnit] of Object.entries(intervals)) {
+                const count = Math.floor(seconds / secondsInUnit);
+                if (count >= 1) {
+                    return `about ${count}${unit[0]} ago`;
+                }
+            }
+            return "just now";
+        }
+
+        async function loadPosts() {
+            try {
+                const res = await fetch("/get-posts/" + username);
+                const posts = await res.json();
+
+                const postsContainer = document.getElementById("posts");
+                postsContainer.innerHTML = "";
+
+                posts.reverse().forEach(post => {
+                    const postElement = document.createElement("div");
+                    postElement.classList.add("post");
+                    let mediaContent = '';
+                    if (post.image) {
+                        const fileExtension = post.image.split('.').pop().toLowerCase();
+                        if (fileExtension === 'mp4' || fileExtension === 'mov') {
+                            mediaContent = `<video controls src="${post.image}" alt="User uploaded video" style="max-width: 100%; margin-top: 10px;"></video>`;
+                        } else {
+                            mediaContent = `<img src="${post.image}" alt="User uploaded image" style="max-width: 100%; margin-top: 10px;">`;
+                        }
+                    }
+
+                    postElement.innerHTML = `
+                        <p><small>${timeAgo(post.timestamp)}</small></p>
+                        <p><strong>${post.username}:</strong></p>
+                        <p>${post.message.replace(/\n/g, '<br>') || ''}</p>
+                        ${mediaContent}
+                        ${post.username === loggedInUser ? `<button class="delete-btn" onclick="deletePost('${post.id}', this)">✖</button>` : ''}
+                    `;
+
+                    postsContainer.prepend(postElement);
+                });
+            } catch (error) {
+                console.error("Error loading posts:", error);
+            }
+        }
+
+        async function deletePost(postId, button) {
+            const res = await fetch(`/delete-post/${postId}`, { method: "DELETE" });
+            if (res.ok) {
+                button.parentElement.remove();
+            } else {
+                alert("ur either not logged in, or this aint ur post");
+            }
+        }
+
+        document.getElementById("postForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData();
+            formData.append("message", document.getElementById("messageInput").value.trim());
+            const imageFile = document.getElementById("imageInput").files[0];
+            if (imageFile) formData.append("image", imageFile);
+
+            try {
+                const res = await fetch("/post", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    document.getElementById("messageInput").value = "";
+                    document.getElementById("imageInput").value = "";
+                    loadPosts();
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                console.error("Error posting:", error);
+                alert("Failed to post. Check console for details.");
+            }
+        });
+
+        checkLogin();
+        loadPosts();
+    </script>
+</body>
+</html>
